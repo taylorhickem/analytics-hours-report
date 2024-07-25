@@ -17,3 +17,14 @@ _tgevents_
  |-- activity: string (nullable = true)
  |-- month: long (nullable = true)
 ```
+
+## S3 location
+the S3 locations are organized by role. Each role has it's own bucket. The location is the same for all roles
+
+`95_data_analytics/staged/<table_name>.csv`
+
+
+## pipeline steps
+
+1. run glue PySpark job to save DynamoDB table to csv using Dynamic_Frame in tmp location
+2. use Lambda to rename file <table_name>.csv in the staged directory
