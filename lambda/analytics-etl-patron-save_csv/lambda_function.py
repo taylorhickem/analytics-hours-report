@@ -1,36 +1,37 @@
 """
-analytis-etl-patron-hours_report
+analytis-etl-patron-save_csv
+moves and renames csv files in analytics folder
 runs after PySpark Glue job that creates the csv from DynamoDB tables source
 """
 
 import os
 import json
-import pandas as pd
-import datetime as dt
 import boto3
 
 
 clients = {
-    'glue': None,
     's3': None
 }
 
+S3_BUCKET = ''
+S3_PREFIX = ''
+FILE_EXTENSION = ''
 
 PARAMETERS = [
-    'DB_NAME',
     'S3_BUCKET',
-    'TARGET_PREFIX',
+    'S3_PREFIX',
     'FILE_EXTENSION'
 ]
 
 
 def lambda_handler(event, context):
+    load_env_parameters()
 
     client_load('s3')
-    tmp_dir = f'{TARGET_PREFIX}/tmp'
-    tagged_keys = move_tagged_files(S3_BUCKET, tmp_dir, TARGET_PREFIX)
+    tmp_dir = f'{S3_PREFIX}/tmp'
+    tagged_keys = move_tagged_files(S3_BUCKET, tmp_dir, S3_PREFIX, file_extension=FILE_EXTENSION)
     client_unload('s3')
-    success = all([k['success'] for k in tagged_keys]) if tagged_keys else False
+    success = all([tagged_keys[k]['success'] for k in tagged_keys]) if tagged_keys else False
     if success:
         table_names = list(tagged_keys.keys())
         message = f'SUCCESS. created csv files for tables {table_names}'
@@ -47,9 +48,16 @@ def lambda_handler(event, context):
 
 
 def load_env_parameters():
+    params = {}
     for a in PARAMETERS:
         if a in os.environ:
-            globals()[a] = os.environ[a]
+            env_param = os.environ[a]
+            globals()[a] = env_param
+            params[a] = env_param
+    if params:
+        print(f'env parameters: {params}')
+    else:
+        print('no env parameters found')
 
 
 def client_load(service):
@@ -64,7 +72,7 @@ def client_unload(service):
         clients[service] = None
 
 
-def move_tagged_files(s3_bucket, source_dir, target_dir, file_extension=FILE_EXTENSION):
+def move_tagged_files(s3_bucket, source_dir, target_dir, file_extension='.csv'):
     tagged_keys = get_tagged_keys(s3_bucket, source_dir, file_extension)
     if tagged_keys:
         keys = list(tagged_keys.keys())
@@ -78,8 +86,8 @@ def move_tagged_files(s3_bucket, source_dir, target_dir, file_extension=FILE_EXT
                 Key=target_key
             )
             clients['s3'].delete_object(Bucket=s3_bucket, Key=source_key)
-            tagged_keys['target'] = target_key
-            tagged_keys['success'] = True
+            tagged_keys[k]['target'] = target_key
+            tagged_keys[k]['success'] = True
     return tagged_keys
 
 

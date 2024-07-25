@@ -1,5 +1,4 @@
 {
-    "DB_NAME": "dynamodb_tables",
     "FILE_EXTENSION": "csv",
     "S3_BUCKET": "taylorhickem-patron",
     "S3_PREFIX": "95_data_analytics/staged"
